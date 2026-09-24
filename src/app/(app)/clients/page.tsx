@@ -8,7 +8,7 @@ import { useProjects } from "@/lib/hooks/useProjects";
 import { ClientFormModal } from "@/components/ClientFormModal";
 
 export default function ClientsPage() {
-  const { clients, isAdmin } = useAppData();
+  const { clients, isStaff } = useAppData();
   const { projects } = useProjects();
   const [showNew, setShowNew] = useState(false);
   const router = useRouter();
@@ -22,7 +22,7 @@ export default function ClientsPage() {
           <h1>Clientes</h1>
           <div className="topbar-sub">Fichas de cliente</div>
         </div>
-        {isAdmin && (
+        {isStaff && (
           <button className="btn btn-primary" onClick={() => setShowNew(true)}>
             + Nuevo cliente
           </button>

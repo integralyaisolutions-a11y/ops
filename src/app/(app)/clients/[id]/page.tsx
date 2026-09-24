@@ -13,7 +13,7 @@ import { statusLabel } from "@/lib/format";
 export default function ClientDetailPage() {
   const params = useParams<{ id: string }>();
   const clientId = params.id;
-  const { clients, isAdmin } = useAppData();
+  const { clients, isStaff } = useAppData();
   const { projects } = useProjects();
   const [showEdit, setShowEdit] = useState(false);
   const router = useRouter();
@@ -56,7 +56,7 @@ export default function ClientDetailPage() {
           <div className="card pad">
             <div className="row between" style={{ marginBottom: 10 }}>
               <h3 style={{ fontSize: 15 }}>Ficha</h3>
-              {isAdmin && (
+              {isStaff && (
                 <div className="row">
                   <button className="btn btn-sm" onClick={() => setShowEdit(true)}>
                     Editar

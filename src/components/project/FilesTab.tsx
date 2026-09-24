@@ -11,7 +11,7 @@ import type { Project } from "@/lib/database.types";
 const BUCKET = "project-files";
 
 export function FilesTab({ project }: { project: Project }) {
-  const { me, isAdmin, nameFor } = useAppData();
+  const { me, isStaff, nameFor } = useAppData();
   const { rows: files, loading } = useFiles(project.id);
   const [uploading, setUploading] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
@@ -93,7 +93,7 @@ export function FilesTab({ project }: { project: Project }) {
         <div className="empty">No hay archivos en este proyecto todavía.</div>
       ) : (
         list.map((f) => {
-          const canDelete = isAdmin || f.uploaded_by === me.id;
+          const canDelete = isStaff || f.uploaded_by === me.id;
           return (
             <div className="file-row" key={f.id}>
               <div className="file-icon">{fileGlyph(f.content_type)}</div>

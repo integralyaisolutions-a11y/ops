@@ -9,7 +9,7 @@ import { toast } from "@/components/toast";
 import type { Project } from "@/lib/database.types";
 
 export function TasksTab({ project }: { project: Project }) {
-  const { me, isAdmin, nameFor } = useAppData();
+  const { me, isStaff, nameFor } = useAppData();
   const { rows: tasks, loading } = useTasks(project.id);
   const [title, setTitle] = useState("");
   const [assignee, setAssignee] = useState("");
@@ -49,6 +49,15 @@ export function TasksTab({ project }: { project: Project }) {
       .update({ done: !done, done_at: !done ? new Date().toISOString() : null })
       .eq("id", taskId);
     if (error) toast("No se pudo actualizar: " + error.message);
+  }
+
+  async function assignTask(taskId: string, assigneeId: string) {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("tasks")
+      .update({ assignee_id: assigneeId || null })
+      .eq("id", taskId);
+    if (error) toast("No se pudo asignar: " + error.message);
   }
 
   async function deleteTask(taskId: string) {
@@ -107,8 +116,15 @@ export function TasksTab({ project }: { project: Project }) {
         <div className="empty">No hay tareas todavía.</div>
       ) : (
         list.map((t) => {
-          const canToggle = isAdmin || t.assignee_id === me.id;
-          const canDelete = isAdmin || t.created_by === me.id;
+          const canToggle = isStaff || t.assignee_id === me.id;
+          const canDelete = isStaff || t.created_by === me.id;
+          // Igual que la política RLS de tasks: staff, asignado o creador
+          const canAssign = isStaff || t.assignee_id === me.id || t.created_by === me.id;
+          // Incluye al asignado actual aunque ya no esté en el proyecto
+          const options =
+            t.assignee_id && !assignable.includes(t.assignee_id)
+              ? [t.assignee_id, ...assignable]
+              : assignable;
           return (
             <div className="task-row" key={t.id}>
               <button
@@ -119,7 +135,24 @@ export function TasksTab({ project }: { project: Project }) {
                 {t.done ? "✓" : ""}
               </button>
               <div className={"task-title" + (t.done ? " done" : "")}>{t.title}</div>
-              {t.assignee_id ? (
+              {canAssign ? (
+                <div className="task-assignee">
+                  {t.assignee_id && <Avatar id={t.assignee_id} name={nameFor(t.assignee_id)} size={19} />}
+                  <select
+                    className="task-assign-select"
+                    value={t.assignee_id || ""}
+                    onChange={(e) => assignTask(t.id, e.target.value)}
+                    title="Asignar a…"
+                  >
+                    <option value="">Sin asignar</option>
+                    {options.map((a) => (
+                      <option key={a} value={a}>
+                        {nameFor(a)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : t.assignee_id ? (
                 <div className="task-assignee">
                   <Avatar id={t.assignee_id} name={nameFor(t.assignee_id)} size={19} />
                   {nameFor(t.assignee_id)}

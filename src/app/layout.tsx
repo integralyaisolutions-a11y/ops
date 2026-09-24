@@ -1,11 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Space_Grotesk } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-space-grotesk",
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
@@ -21,8 +20,17 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={spaceGrotesk.variable}>
-      <body>{children}</body>
+    <html lang="es" className={inter.variable} suppressHydrationWarning>
+      <head>
+        {/* Aplica el tema guardado antes de pintar, para evitar un parpadeo */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem("theme")==="dark")document.documentElement.dataset.theme="dark"}catch(e){}`,
+          }}
+        />
+      </head>
+      {/* suppressHydrationWarning: extensiones del navegador (p. ej. ColorZilla) añaden atributos al <body> */}
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }

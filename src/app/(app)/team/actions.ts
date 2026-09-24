@@ -3,7 +3,7 @@
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import type { Role } from "@/lib/database.types";
 
-export async function inviteTeamMember(email: string, role: Role) {
+export async function inviteTeamMember(email: string, role: Role, fullName?: string) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -34,6 +34,7 @@ export async function inviteTeamMember(email: string, role: Role) {
   } else {
     const { data: invited, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(
       email.trim(),
+      { data: fullName?.trim() ? { full_name: fullName.trim() } : undefined },
     );
     if (inviteErr || !invited?.user) {
       return { error: inviteErr?.message || "No se pudo invitar a esta persona." };
@@ -43,10 +44,37 @@ export async function inviteTeamMember(email: string, role: Role) {
 
   const { error: upsertErr } = await supabase
     .from("profiles")
-    .upsert({ id: userId, role, added_by: user.id }, { onConflict: "id" });
+    .upsert(
+      { id: userId, role, added_by: user.id, ...(fullName?.trim() ? { full_name: fullName.trim() } : {}) },
+      { onConflict: "id" },
+    );
   if (upsertErr) {
     return { error: "Invitación enviada, pero no se pudo asignar el rol: " + upsertErr.message };
   }
 
   return { ok: true };
+}
+
+// Emails del equipo (viven en auth.users, no en profiles), solo para admins.
+export async function getTeamEmails(): Promise<Record<string, string>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return {};
+
+  const { data: myProfile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (!myProfile || myProfile.role !== "admin") return {};
+
+  const admin = createAdminClient();
+  const { data } = await admin.auth.admin.listUsers();
+  const emails: Record<string, string> = {};
+  data?.users?.forEach((u: { id: string; email?: string }) => {
+    if (u.email) emails[u.id] = u.email;
+  });
+  return emails;
 }

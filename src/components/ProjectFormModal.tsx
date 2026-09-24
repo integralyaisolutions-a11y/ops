@@ -7,6 +7,7 @@ import { useAppData } from "@/components/app-data";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/toast";
 import type { Project, ProjectStatus } from "@/lib/database.types";
+import { PROJECT_STATUSES, STATUS_GROUP_LABELS } from "@/lib/format";
 
 export function ProjectFormModal({
   project,
@@ -17,17 +18,38 @@ export function ProjectFormModal({
   onClose: () => void;
   onSaved?: (id: string) => void;
 }) {
-  const { team, clients, nameFor } = useAppData();
+  const { me, team, clients, nameFor } = useAppData();
+
+  // Encargado por defecto de una fase: la persona con el rol indicado en
+  // PROJECT_STATUSES (si hay varias, primero tú, si no la más antigua).
+  function defaultOwnerFor(s: ProjectStatus): string | null {
+    const role = PROJECT_STATUSES.find((x) => x.value === s)?.ownerRole;
+    if (!role) return null;
+    if (me.role === role) return me.id;
+    const match = Object.values(team)
+      .filter((t) => t.role === role)
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))[0];
+    return match?.id ?? null;
+  }
+
   const [name, setName] = useState(project?.name || "");
-  const [status, setStatus] = useState<ProjectStatus>(project?.status || "activo");
+  const [status, setStatus] = useState<ProjectStatus>(project?.status || "descubrimiento");
   const [clientId, setClientId] = useState(project?.client_id || "");
-  const [ownerId, setOwnerId] = useState(project?.owner_id || "");
+  const [ownerId, setOwnerId] = useState(
+    project ? project.owner_id || "" : defaultOwnerFor("descubrimiento") || "",
+  );
+
+  function changeStatus(s: ProjectStatus) {
+    setStatus(s);
+    const owner = defaultOwnerFor(s);
+    if (owner) setOwnerId(owner);
+  }
   const [devIds, setDevIds] = useState<string[]>(project?.developer_ids || []);
   const [nextStep, setNextStep] = useState(project?.next_step || "");
   const [description, setDescription] = useState(project?.description || "");
   const [saving, setSaving] = useState(false);
 
-  const admins = Object.entries(team).filter(([, t]) => t.role === "admin");
+  const admins = Object.entries(team).filter(([, t]) => t.role === "admin" || t.role === "director");
   const devs = Object.entries(team).filter(([, t]) => t.role === "developer");
   const ownerOptions = [...admins, ...devs];
 
@@ -48,7 +70,10 @@ export function ProjectFormModal({
       description,
     };
     if (project) {
-      const { error } = await supabase.from("projects").update(payload).eq("id", project.id);
+      const { error } = await supabase
+        .from("projects")
+        .update({ ...payload, updated_at: new Date().toISOString() })
+        .eq("id", project.id);
       setSaving(false);
       if (error) {
         toast("No se pudo guardar: " + error.message);
@@ -95,10 +120,16 @@ export function ProjectFormModal({
       <div className="field-row">
         <div className="field">
           <label>Estado</label>
-          <select value={status} onChange={(e) => setStatus(e.target.value as ProjectStatus)}>
-            <option value="activo">Activo</option>
-            <option value="pausado">Pausado</option>
-            <option value="cerrado">Cerrado</option>
+          <select value={status} onChange={(e) => changeStatus(e.target.value as ProjectStatus)}>
+            {(Object.keys(STATUS_GROUP_LABELS) as (keyof typeof STATUS_GROUP_LABELS)[]).map((g) => (
+              <optgroup key={g} label={STATUS_GROUP_LABELS[g]}>
+                {PROJECT_STATUSES.filter((s) => s.group === g).map((s) => (
+                  <option key={s.value} value={s.value} title={s.hint}>
+                    {s.label}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
           </select>
         </div>
         <div className="field">
@@ -123,6 +154,9 @@ export function ProjectFormModal({
             </option>
           ))}
         </select>
+        <div className="muted" style={{ fontSize: 12, marginTop: 5 }}>
+          Se asigna solo al cambiar de fase. Puedes cambiarlo a mano.
+        </div>
       </div>
       <div className="field">
         <label>Developers asignados</label>

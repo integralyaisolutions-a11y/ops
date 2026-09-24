@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/Avatar";
 import { AppDataProvider, useAppData } from "@/components/app-data";
 import { Toaster } from "@/components/toast";
+import { ROLE_LABELS } from "@/lib/database.types";
 
 function NavItem({
   href,
@@ -30,9 +31,19 @@ function NavItem({
 }
 
 function ShellInner({ children }: { children: React.ReactNode }) {
-  const { me, isAdmin } = useAppData();
+  const { me, isAdmin, isStaff } = useAppData();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+
+  function toggleTheme() {
+    const root = document.documentElement;
+    const dark = root.dataset.theme !== "dark";
+    if (dark) root.dataset.theme = "dark";
+    else delete root.dataset.theme;
+    try {
+      localStorage.setItem("theme", dark ? "dark" : "light");
+    } catch {}
+  }
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -45,28 +56,40 @@ function ShellInner({ children }: { children: React.ReactNode }) {
     <div style={{ display: "flex", minHeight: "100vh" }}>
       <div className={"sidebar" + (open ? " open" : "")}>
         <div className="brand">
-          <div className="brand-mark">IA</div>
-          <div>
-            <div className="brand-name">Integraly</div>
-            <div className="brand-sub">Ops</div>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-integraly.png" alt="Integraly" className="brand-logo theme-light-only" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-integraly-dark.png" alt="Integraly" className="brand-logo theme-dark-only" />
+          <div className="brand-sub" style={{ marginTop: 0 }}>Ops</div>
         </div>
         <div className="nav-section">General</div>
         <NavItem href="/dashboard" icon="🏠" label="Inicio" onNavigate={() => setOpen(false)} />
         <NavItem href="/projects" icon="📁" label="Proyectos" onNavigate={() => setOpen(false)} />
-        {isAdmin && (
+        {isStaff && (
           <>
             <div className="nav-section">Administración</div>
             <NavItem href="/clients" icon="🧾" label="Clientes" onNavigate={() => setOpen(false)} />
-            <NavItem href="/team" icon="👥" label="Equipo" onNavigate={() => setOpen(false)} />
+            {isAdmin && <NavItem href="/team" icon="👥" label="Equipo" onNavigate={() => setOpen(false)} />}
           </>
         )}
         <div className="sidebar-foot">
+          <button className="nav-item" onClick={toggleTheme}>
+            <span className="nav-icon">
+              <span className="theme-light-only">☾</span>
+              <span className="theme-dark-only">☀</span>
+            </span>
+            <span className="theme-light-only">Modo oscuro</span>
+            <span className="theme-dark-only">Modo claro</span>
+          </button>
+          <Link href="/set-password" className="nav-item" onClick={() => setOpen(false)}>
+            <span className="nav-icon">🔑</span>
+            Contraseña
+          </Link>
           <div className="me-row">
             <Avatar id={me.id} name={me.full_name} size={30} />
             <div style={{ minWidth: 0, flex: 1 }}>
               <div className="me-name">{me.full_name || "Tú"}</div>
-              <div className="me-role">{isAdmin ? "Administrador" : "Developer"}</div>
+              <div className="me-role">{ROLE_LABELS[me.role]}</div>
             </div>
             <button
               className="icon-btn"
@@ -98,7 +121,7 @@ export default function AppShell({
   me,
   children,
 }: {
-  me: { id: string; email: string; full_name: string | null; role: "admin" | "developer" };
+  me: { id: string; email: string; full_name: string | null; role: "admin" | "director" | "developer" };
   children: React.ReactNode;
 }) {
   return (

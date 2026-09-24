@@ -6,16 +6,21 @@ import { useProjects } from "@/lib/hooks/useProjects";
 import { ProjectCard } from "@/components/ProjectCard";
 import { ProjectFormModal } from "@/components/ProjectFormModal";
 import { useRouter } from "next/navigation";
+import { PROJECT_STATUSES } from "@/lib/format";
 
 export default function DashboardPage() {
-  const { isAdmin, team } = useAppData();
+  const { isStaff, team } = useAppData();
   const { projects, loading } = useProjects();
   const [showNew, setShowNew] = useState(false);
   const router = useRouter();
 
   const all = Object.values(projects);
-  const active = all.filter((p) => p.status === "activo");
-  const paused = all.filter((p) => p.status === "pausado");
+  const groupOf = (s: string) => PROJECT_STATUSES.find((x) => x.value === s)?.group;
+  const order = (s: string) => PROJECT_STATUSES.findIndex((x) => x.value === s);
+  const commercial = all.filter((p) => groupOf(p.status) === "comercial");
+  const inDev = all.filter((p) => p.status === "desarrollo");
+  // "En curso": todo lo que no está pausado, cerrado ni ya en mantenimiento
+  const active = [...commercial, ...inDev].sort((a, b) => order(a.status) - order(b.status));
 
   return (
     <>
@@ -24,7 +29,7 @@ export default function DashboardPage() {
           <h1>Inicio</h1>
           <div className="topbar-sub">Resumen de la actividad de la agencia</div>
         </div>
-        {isAdmin && (
+        {isStaff && (
           <button className="btn btn-primary" onClick={() => setShowNew(true)}>
             + Nuevo proyecto
           </button>
@@ -33,12 +38,12 @@ export default function DashboardPage() {
       <div className="content">
         <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", marginBottom: 8 }}>
           <div className="card pad stat">
-            <b>{active.length}</b>
-            <span>Proyectos activos</span>
+            <b>{commercial.length}</b>
+            <span>En fase comercial</span>
           </div>
           <div className="card pad stat">
-            <b>{paused.length}</b>
-            <span>Pausados</span>
+            <b>{inDev.length}</b>
+            <span>En desarrollo</span>
           </div>
           <div className="card pad stat">
             <b>{Object.keys(team).length}</b>
@@ -46,14 +51,14 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="section-title">{isAdmin ? "Proyectos activos" : "Tus proyectos activos"}</div>
+        <div className="section-title">{isStaff ? "Proyectos en curso" : "Tus proyectos en curso"}</div>
         {loading ? (
           <div className="empty">Cargando…</div>
         ) : active.length === 0 ? (
           <div className="empty">
-            {isAdmin
-              ? 'Todavía no hay proyectos activos. Crea el primero con "+ Nuevo proyecto".'
-              : "No tienes proyectos activos asignados ahora mismo."}
+            {isStaff
+              ? 'Todavía no hay proyectos en curso. Crea el primero con "+ Nuevo proyecto".'
+              : "No tienes proyectos en curso asignados ahora mismo."}
           </div>
         ) : (
           <div className="grid grid-cards">

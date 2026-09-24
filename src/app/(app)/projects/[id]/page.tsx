@@ -23,7 +23,7 @@ export default function ProjectDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tab = searchParams.get("tab") || "resumen";
-  const { isAdmin } = useAppData();
+  const { isStaff } = useAppData();
   const project = useProject(projectId);
   const [showEdit, setShowEdit] = useState(false);
 
@@ -52,7 +52,7 @@ export default function ProjectDetailPage() {
         <div>
           <h1>{project.name}</h1>
         </div>
-        {isAdmin && (
+        {isStaff && (
           <button className="btn" onClick={() => setShowEdit(true)}>
             Editar proyecto
           </button>

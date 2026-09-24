@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { Modal } from "@/components/Modal";
 import { useAppData } from "@/components/app-data";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "@/components/toast";
-import { inviteTeamMember } from "./actions";
-import type { Role } from "@/lib/database.types";
+import { getTeamEmails, inviteTeamMember } from "./actions";
+import { ROLE_LABELS, type Role } from "@/lib/database.types";
 
 function AddTeamModal({ onClose }: { onClose: () => void }) {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("developer");
   const [saving, setSaving] = useState(false);
@@ -20,7 +21,7 @@ function AddTeamModal({ onClose }: { onClose: () => void }) {
       return;
     }
     setSaving(true);
-    const res = await inviteTeamMember(email.trim(), role);
+    const res = await inviteTeamMember(email.trim(), role, name);
     setSaving(false);
     if (res?.error) {
       toast(res.error);
@@ -33,19 +34,29 @@ function AddTeamModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="Añadir persona al equipo" onClose={onClose} onSave={handleSave} saving={saving} saveLabel="Invitar">
       <div className="field">
+        <label>Nombre</label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Nombre y apellido"
+          autoFocus
+        />
+      </div>
+      <div className="field">
         <label>Email</label>
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="nombre@empresa.com"
-          autoFocus
         />
       </div>
       <div className="field">
         <label>Rol</label>
         <select value={role} onChange={(e) => setRole(e.target.value as Role)}>
           <option value="developer">Developer — acceso solo a sus proyectos</option>
+          <option value="director">Director de proyecto — ve y edita todo, sin gestionar el equipo</option>
           <option value="admin">Administrador — acceso completo</option>
         </select>
       </div>
@@ -59,8 +70,14 @@ function AddTeamModal({ onClose }: { onClose: () => void }) {
 export default function TeamPage() {
   const { me, team, nameFor } = useAppData();
   const [showAdd, setShowAdd] = useState(false);
+  const [emails, setEmails] = useState<Record<string, string>>({});
 
-  const rows = Object.entries(team).sort(([, a], [, b]) => a.role.localeCompare(b.role));
+  useEffect(() => {
+    getTeamEmails().then(setEmails);
+  }, [team]);
+
+  const roleOrder: Record<Role, number> = { admin: 0, director: 1, developer: 2 };
+  const rows = Object.entries(team).sort(([, a], [, b]) => roleOrder[a.role] - roleOrder[b.role]);
 
   async function setRole(id: string, role: Role) {
     const supabase = createClient();
@@ -70,6 +87,19 @@ export default function TeamPage() {
       return;
     }
     toast("Rol actualizado");
+  }
+
+  async function renameMember(id: string) {
+    const current = team[id]?.full_name || "";
+    const name = prompt("Nombre de esta persona:", current);
+    if (name === null || !name.trim() || name.trim() === current) return;
+    const supabase = createClient();
+    const { error } = await supabase.from("profiles").update({ full_name: name.trim() }).eq("id", id);
+    if (error) {
+      toast("No se pudo cambiar el nombre: " + error.message);
+      return;
+    }
+    toast("Nombre actualizado");
   }
 
   async function removeMember(id: string) {
@@ -104,9 +134,14 @@ export default function TeamPage() {
                   {nameFor(id)}
                   {id === me.id && <span className="muted" style={{ fontWeight: 400 }}> (tú)</span>}
                 </div>
+                {emails[id] && (
+                  <div className="muted" style={{ fontSize: 12, overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {emails[id]}
+                  </div>
+                )}
               </div>
               <span className={`role-pill role-${t.role}`}>
-                {t.role === "admin" ? "Administrador" : "Developer"}
+                {ROLE_LABELS[t.role]}
               </span>
               <select
                 value={t.role}
@@ -121,8 +156,12 @@ export default function TeamPage() {
                 }}
               >
                 <option value="developer">Developer</option>
+                <option value="director">Director de proyecto</option>
                 <option value="admin">Administrador</option>
               </select>
+              <button className="icon-btn" title="Editar nombre" onClick={() => renameMember(id)}>
+                ✎
+              </button>
               <button className="icon-btn" title="Quitar del equipo" onClick={() => removeMember(id)}>
                 ✕
               </button>

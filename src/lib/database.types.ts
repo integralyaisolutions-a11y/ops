@@ -2,8 +2,21 @@
 // Si prefieres tipos generados automáticamente, puedes sustituir este
 // archivo por el resultado de `supabase gen types typescript`.
 
-export type Role = "admin" | "developer";
-export type ProjectStatus = "activo" | "pausado" | "cerrado";
+export type Role = "admin" | "director" | "developer";
+
+export const ROLE_LABELS: Record<Role, string> = {
+  admin: "Administrador",
+  director: "Director de proyecto",
+  developer: "Developer",
+};
+export type ProjectStatus =
+  | "descubrimiento"
+  | "propuesta"
+  | "presupuesto"
+  | "desarrollo"
+  | "mantenimiento"
+  | "pausado"
+  | "cerrado";
 
 export interface Profile {
   id: string;

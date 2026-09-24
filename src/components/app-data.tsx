@@ -8,14 +8,17 @@ interface Me {
   id: string;
   email: string;
   full_name: string | null;
-  role: "admin" | "developer";
+  role: "admin" | "director" | "developer";
 }
 
 interface AppDataValue {
   me: Me;
   team: Record<string, Profile>;
   clients: Record<string, Client>;
+  /** Solo administradores: gestionar el equipo (personas y roles). */
   isAdmin: boolean;
+  /** Administradores y directores de proyecto: ven y editan todos los proyectos y clientes. */
+  isStaff: boolean;
   nameFor: (id?: string | null) => string;
 }
 
@@ -98,6 +101,7 @@ export function AppDataProvider({
     team,
     clients,
     isAdmin: me.role === "admin",
+    isStaff: me.role === "admin" || me.role === "director",
     nameFor,
   };
 

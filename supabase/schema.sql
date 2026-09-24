@@ -10,7 +10,7 @@ create extension if not exists "pgcrypto";
 -- ---------------------------------------------------------------------------
 create table if not exists profiles (
   id uuid primary key references auth.users (id) on delete cascade,
-  role text not null default 'developer' check (role in ('admin', 'developer')),
+  role text not null default 'developer' check (role in ('admin', 'director', 'developer')),
   full_name text,
   created_at timestamptz not null default now(),
   added_by uuid references auth.users (id)
@@ -36,7 +36,7 @@ create table if not exists projects (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   client_id uuid references clients (id) on delete set null,
-  status text not null default 'activo' check (status in ('activo', 'pausado', 'cerrado')),
+  status text not null default 'descubrimiento' check (status in ('descubrimiento', 'propuesta', 'presupuesto', 'desarrollo', 'mantenimiento', 'pausado', 'cerrado')),
   owner_id uuid references auth.users (id),
   developer_ids uuid[] not null default '{}',
   next_step text default '',
@@ -104,6 +104,19 @@ as $$
   );
 $$;
 
+-- Admin o director de proyecto: acceso completo a los datos (no al equipo)
+create or replace function is_staff()
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from profiles where id = auth.uid() and role in ('admin', 'director')
+  );
+$$;
+
 create or replace function is_project_member(pid uuid)
 returns boolean
 language sql
@@ -114,7 +127,7 @@ as $$
   select exists (
     select 1 from projects p
     where p.id = pid
-      and (is_admin() or p.owner_id = auth.uid() or auth.uid() = any(p.developer_ids))
+      and (is_staff() or p.owner_id = auth.uid() or auth.uid() = any(p.developer_ids))
   );
 $$;
 
@@ -135,6 +148,7 @@ end;
 $$;
 
 grant execute on function is_admin() to authenticated;
+grant execute on function is_staff() to authenticated;
 grant execute on function is_project_member(uuid) to authenticated;
 grant execute on function update_next_step(uuid, text) to authenticated;
 
@@ -226,39 +240,39 @@ create policy "profiles_delete_admin" on profiles for delete to authenticated us
 
 -- clients — visibles para todo el equipo; solo admins escriben
 create policy "clients_select" on clients for select to authenticated using (true);
-create policy "clients_write_admin" on clients for insert to authenticated with check (is_admin());
-create policy "clients_update_admin" on clients for update to authenticated using (is_admin()) with check (is_admin());
-create policy "clients_delete_admin" on clients for delete to authenticated using (is_admin());
+create policy "clients_write_admin" on clients for insert to authenticated with check (is_staff());
+create policy "clients_update_admin" on clients for update to authenticated using (is_staff()) with check (is_staff());
+create policy "clients_delete_admin" on clients for delete to authenticated using (is_staff());
 
 -- projects — solo ven/editan quienes son miembros (o admins); crear/editar
 -- metadatos completos es solo de admins (el "próximo paso" se actualiza
 -- aparte vía la función update_next_step, abierta a cualquier miembro).
 create policy "projects_select_member" on projects for select to authenticated
-  using (is_admin() or owner_id = auth.uid() or auth.uid() = any(developer_ids));
-create policy "projects_insert_admin" on projects for insert to authenticated with check (is_admin());
-create policy "projects_update_admin" on projects for update to authenticated using (is_admin()) with check (is_admin());
-create policy "projects_delete_admin" on projects for delete to authenticated using (is_admin());
+  using (is_staff() or owner_id = auth.uid() or auth.uid() = any(developer_ids));
+create policy "projects_insert_admin" on projects for insert to authenticated with check (is_staff());
+create policy "projects_update_admin" on projects for update to authenticated using (is_staff()) with check (is_staff());
+create policy "projects_delete_admin" on projects for delete to authenticated using (is_staff());
 
 -- tasks
 create policy "tasks_select_member" on tasks for select to authenticated using (is_project_member(project_id));
 create policy "tasks_insert_member" on tasks for insert to authenticated with check (is_project_member(project_id));
 create policy "tasks_update_member" on tasks for update to authenticated
-  using (is_project_member(project_id) and (is_admin() or assignee_id = auth.uid() or created_by = auth.uid()))
+  using (is_project_member(project_id) and (is_staff() or assignee_id = auth.uid() or created_by = auth.uid()))
   with check (is_project_member(project_id));
 create policy "tasks_delete_owner" on tasks for delete to authenticated
-  using (is_admin() or created_by = auth.uid());
+  using (is_staff() or created_by = auth.uid());
 
 -- files
 create policy "files_select_member" on files for select to authenticated using (is_project_member(project_id));
 create policy "files_insert_member" on files for insert to authenticated with check (is_project_member(project_id));
 create policy "files_delete_owner" on files for delete to authenticated
-  using (is_admin() or uploaded_by = auth.uid());
+  using (is_staff() or uploaded_by = auth.uid());
 
 -- notes
 create policy "notes_select_member" on notes for select to authenticated using (is_project_member(project_id));
 create policy "notes_insert_member" on notes for insert to authenticated with check (is_project_member(project_id));
 create policy "notes_delete_owner" on notes for delete to authenticated
-  using (is_admin() or author_id = auth.uid());
+  using (is_staff() or author_id = auth.uid());
 
 -- ---------------------------------------------------------------------------
 -- Realtime: para que la app se actualice en vivo entre pestañas/personas
@@ -278,7 +292,7 @@ create policy "project_files_select" on storage.objects for select to authentica
 create policy "project_files_insert" on storage.objects for insert to authenticated
   with check (bucket_id = 'project-files' and is_project_member(((storage.foldername(name))[1])::uuid));
 create policy "project_files_delete" on storage.objects for delete to authenticated
-  using (bucket_id = 'project-files' and (is_admin() or owner = auth.uid()));
+  using (bucket_id = 'project-files' and (is_staff() or owner = auth.uid()));
 
 -- ============================================================================
 -- Después de ejecutar este script, crea a la primera persona administradora

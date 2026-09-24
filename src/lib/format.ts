@@ -1,3 +1,5 @@
+import type { ProjectStatus, Role } from "@/lib/database.types";
+
 export function fmtDate(iso?: string | null) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -26,8 +28,33 @@ export function fmtSize(bytes?: number | null) {
   return (b / 1024 / 1024).toFixed(1) + " MB";
 }
 
+// Estados de un proyecto, en el orden del proceso con el cliente.
+// ownerRole: rol de quien pasa a ser encargado automáticamente al entrar en
+// esa fase (sin ownerRole, el encargado no se toca).
+export const PROJECT_STATUSES: {
+  value: ProjectStatus;
+  label: string;
+  group: "comercial" | "ejecucion" | "otros";
+  hint: string;
+  ownerRole?: Role;
+}[] = [
+  { value: "descubrimiento", label: "Descubrimiento", group: "comercial", hint: "Primeras reuniones y recogida de información", ownerRole: "admin" },
+  { value: "propuesta", label: "Beta / enfoque", group: "comercial", hint: "Preparando o presentando la beta o el enfoque", ownerRole: "director" },
+  { value: "presupuesto", label: "Presupuesto", group: "comercial", hint: "Preparando o pendiente de aceptar el presupuesto", ownerRole: "admin" },
+  { value: "desarrollo", label: "En desarrollo", group: "ejecucion", hint: "Presupuesto aceptado, desarrollo y validaciones", ownerRole: "director" },
+  { value: "mantenimiento", label: "Mantenimiento", group: "ejecucion", hint: "En producción y mantenimiento", ownerRole: "director" },
+  { value: "pausado", label: "Pausado", group: "otros", hint: "En espera" },
+  { value: "cerrado", label: "Cerrado", group: "otros", hint: "Terminado o presupuesto no aceptado" },
+];
+
+export const STATUS_GROUP_LABELS = {
+  comercial: "Fase comercial",
+  ejecucion: "Ejecución",
+  otros: "Otros",
+} as const;
+
 export function statusLabel(s: string) {
-  return s === "activo" ? "Activo" : s === "pausado" ? "Pausado" : "Cerrado";
+  return PROJECT_STATUSES.find((x) => x.value === s)?.label ?? s;
 }
 
 export function fileGlyph(ct?: string | null) {

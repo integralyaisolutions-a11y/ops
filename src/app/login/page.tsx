@@ -1,12 +1,60 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+type Mode = "password" | "link" | "reset";
+
+function friendlyError(message: string) {
+  const m = message.toLowerCase();
+  if (m.includes("invalid login credentials")) {
+    return "Email o contraseña incorrectos. Si todavía no has creado una contraseña, entra con un enlace por email.";
+  }
+  if (m.includes("signups not allowed")) {
+    return "Esta cuenta no ha sido invitada todavía. Pide a un administrador que te añada desde Equipo.";
+  }
+  if (m.includes("rate limit") || m.includes("only request this after")) {
+    return "Se han pedido demasiados emails seguidos. Espera un poco (hasta una hora si has pedido varios) e inténtalo de nuevo.";
+  }
+  if (m.includes("email not confirmed")) {
+    return "Tu email todavía no está confirmado. Entra una vez con un enlace por email.";
+  }
+  return message;
+}
+
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const nextParam = params.get("next");
+  const next = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/dashboard";
+  const linkFailed = params.get("error") === "auth";
+
+  const [mode, setMode] = useState<Mode>("password");
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const [errorMsg, setErrorMsg] = useState("");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
+    linkFailed ? "error" : "idle",
+  );
+  const [errorMsg, setErrorMsg] = useState(
+    linkFailed
+      ? "El enlace no es válido o ha caducado. Suele pasar si lo abres en otro navegador o dispositivo distinto al que lo pidió. Entra con tu contraseña o pide un enlace nuevo."
+      : "",
+  );
+
+  function switchMode(m: Mode) {
+    setMode(m);
+    setStatus("idle");
+    setErrorMsg("");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -14,39 +62,76 @@ export default function LoginPage() {
     setStatus("sending");
     setErrorMsg("");
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+
+    if (mode === "password") {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (error) {
+        setStatus("error");
+        setErrorMsg(friendlyError(error.message));
+        return;
+      }
+      router.replace(next);
+      router.refresh();
+      return;
+    }
+
+    const { error } =
+      mode === "link"
+        ? await supabase.auth.signInWithOtp({
+            email: email.trim(),
+            options: {
+              shouldCreateUser: false,
+              emailRedirectTo: `${window.location.origin}/auth/callback`,
+            },
+          })
+        : await supabase.auth.resetPasswordForEmail(email.trim(), {
+            redirectTo: `${window.location.origin}/auth/callback?next=/set-password`,
+          });
     if (error) {
       setStatus("error");
-      setErrorMsg(
-        error.message.includes("Signups not allowed")
-          ? "Esta cuenta no ha sido invitada todavía. Pide a un administrador que te añada desde Equipo."
-          : "No se pudo enviar el enlace. Inténtalo de nuevo.",
-      );
+      setErrorMsg(friendlyError(error.message));
       return;
     }
     setStatus("sent");
   }
 
+  const linkStyle: React.CSSProperties = {
+    background: "none",
+    border: "none",
+    padding: 0,
+    cursor: "pointer",
+    color: "var(--accent)",
+    fontSize: 12.8,
+    fontWeight: 600,
+  };
+
   return (
     <div className="center-screen">
       <div className="card center-card">
-        <div className="glyph">⚙️</div>
-        <h2 style={{ fontSize: 18, marginBottom: 8 }}>Integraly Ops</h2>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-integraly.png" alt="Integraly" className="theme-light-only" style={{ height: 20, width: "auto", margin: "0 auto 22px", display: "block" }} />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-integraly-dark.png" alt="Integraly" className="theme-dark-only" style={{ height: 20, width: "auto", margin: "0 auto 22px", display: "block" }} />
         {status === "sent" ? (
-          <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.6 }}>
-            Te hemos enviado un enlace de acceso a <b>{email}</b>. Ábrelo desde este mismo
-            dispositivo para entrar.
-          </p>
+          <>
+            <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.6, marginBottom: 16 }}>
+              Te hemos enviado un enlace a <b>{email}</b>. Ábrelo en <b>este mismo navegador</b>{" "}
+              (no desde la app del correo) para que funcione.
+            </p>
+            <button type="button" style={linkStyle} onClick={() => switchMode("password")}>
+              ← Volver
+            </button>
+          </>
         ) : (
           <>
             <p className="muted" style={{ fontSize: 13.5, lineHeight: 1.6, marginBottom: 18 }}>
-              Introduce tu email de trabajo y te enviaremos un enlace para entrar, sin
-              contraseña.
+              {mode === "password" && "Entra con tu email y contraseña."}
+              {mode === "link" &&
+                "Te enviaremos un enlace para entrar sin contraseña. Úsalo la primera vez, y luego crea tu contraseña."}
+              {mode === "reset" && "Te enviaremos un enlace para crear una contraseña nueva."}
             </p>
             <form onSubmit={handleSubmit}>
               <div className="field" style={{ textAlign: "left" }}>
@@ -56,11 +141,24 @@ export default function LoginPage() {
                   placeholder="tu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
                   autoFocus
                 />
               </div>
+              {mode === "password" && (
+                <div className="field" style={{ textAlign: "left" }}>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Contraseña"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                  />
+                </div>
+              )}
               {status === "error" && (
-                <p style={{ color: "var(--danger)", fontSize: 12.6, marginBottom: 12 }}>
+                <p style={{ color: "var(--danger)", fontSize: 12.6, marginBottom: 12, textAlign: "left" }}>
                   {errorMsg}
                 </p>
               )}
@@ -70,9 +168,35 @@ export default function LoginPage() {
                 disabled={status === "sending"}
                 style={{ width: "100%", justifyContent: "center" }}
               >
-                {status === "sending" ? "Enviando…" : "Enviar enlace de acceso"}
+                {status === "sending"
+                  ? mode === "password"
+                    ? "Entrando…"
+                    : "Enviando…"
+                  : mode === "password"
+                    ? "Entrar"
+                    : mode === "link"
+                      ? "Enviar enlace de acceso"
+                      : "Enviar enlace para cambiar contraseña"}
               </button>
             </form>
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16, alignItems: "center" }}
+            >
+              {mode === "password" ? (
+                <>
+                  <button type="button" style={linkStyle} onClick={() => switchMode("reset")}>
+                    ¿Has olvidado tu contraseña?
+                  </button>
+                  <button type="button" style={linkStyle} onClick={() => switchMode("link")}>
+                    Primera vez / entrar con enlace por email
+                  </button>
+                </>
+              ) : (
+                <button type="button" style={linkStyle} onClick={() => switchMode("password")}>
+                  ← Entrar con contraseña
+                </button>
+              )}
+            </div>
           </>
         )}
       </div>
