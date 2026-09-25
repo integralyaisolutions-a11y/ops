@@ -39,19 +39,28 @@ export const PROJECT_STATUSES: {
   ownerRole?: Role;
 }[] = [
   { value: "descubrimiento", label: "Descubrimiento", group: "comercial", hint: "Primeras reuniones y recogida de información", ownerRole: "admin" },
-  { value: "propuesta", label: "Beta / enfoque", group: "comercial", hint: "Preparando o presentando la beta o el enfoque", ownerRole: "director" },
+  { value: "propuesta", label: "Prueba de concepto", group: "comercial", hint: "Preparando o presentando la prueba de concepto o el enfoque", ownerRole: "director" },
   { value: "presupuesto", label: "Presupuesto", group: "comercial", hint: "Preparando o pendiente de aceptar el presupuesto", ownerRole: "admin" },
   { value: "desarrollo", label: "En desarrollo", group: "ejecucion", hint: "Presupuesto aceptado, desarrollo y validaciones", ownerRole: "director" },
-  { value: "mantenimiento", label: "Mantenimiento", group: "ejecucion", hint: "En producción y mantenimiento", ownerRole: "director" },
+  { value: "testing", label: "Testing", group: "ejecucion", hint: "Pruebas y validación antes de salir a producción", ownerRole: "director" },
+  // Valor interno "mantenimiento" (se mantiene para no migrar datos)
+  { value: "mantenimiento", label: "Post go-live", group: "ejecucion", hint: "En producción: seguimiento y mantenimiento", ownerRole: "director" },
   { value: "pausado", label: "Pausado", group: "otros", hint: "En espera" },
   { value: "cerrado", label: "Cerrado", group: "otros", hint: "Terminado o presupuesto no aceptado" },
 ];
 
 export const STATUS_GROUP_LABELS = {
-  comercial: "Fase comercial",
+  comercial: "Preventa",
   ejecucion: "Ejecución",
   otros: "Otros",
 } as const;
+
+// Añade https:// si falta, para que el enlace a la demo siempre funcione
+export function normalizeUrl(url?: string | null) {
+  const u = (url || "").trim();
+  if (!u) return "";
+  return /^https?:\/\//i.test(u) ? u : `https://${u}`;
+}
 
 export function statusLabel(s: string) {
   return PROJECT_STATUSES.find((x) => x.value === s)?.label ?? s;

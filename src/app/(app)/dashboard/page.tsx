@@ -18,8 +18,8 @@ export default function DashboardPage() {
   const groupOf = (s: string) => PROJECT_STATUSES.find((x) => x.value === s)?.group;
   const order = (s: string) => PROJECT_STATUSES.findIndex((x) => x.value === s);
   const commercial = all.filter((p) => groupOf(p.status) === "comercial");
-  const inDev = all.filter((p) => p.status === "desarrollo");
-  // "En curso": todo lo que no está pausado, cerrado ni ya en mantenimiento
+  const inDev = all.filter((p) => p.status === "desarrollo" || p.status === "testing");
+  // "En curso": todo lo que no está pausado, cerrado ni ya en post go-live
   const active = [...commercial, ...inDev].sort((a, b) => order(a.status) - order(b.status));
 
   return (
@@ -39,11 +39,11 @@ export default function DashboardPage() {
         <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", marginBottom: 8 }}>
           <div className="card pad stat">
             <b>{commercial.length}</b>
-            <span>En fase comercial</span>
+            <span>En preventa</span>
           </div>
           <div className="card pad stat">
             <b>{inDev.length}</b>
-            <span>En desarrollo</span>
+            <span>En desarrollo o testing</span>
           </div>
           <div className="card pad stat">
             <b>{Object.keys(team).length}</b>

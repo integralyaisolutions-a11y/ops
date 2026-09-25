@@ -36,11 +36,12 @@ create table if not exists projects (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   client_id uuid references clients (id) on delete set null,
-  status text not null default 'descubrimiento' check (status in ('descubrimiento', 'propuesta', 'presupuesto', 'desarrollo', 'mantenimiento', 'pausado', 'cerrado')),
+  status text not null default 'descubrimiento' check (status in ('descubrimiento', 'propuesta', 'presupuesto', 'desarrollo', 'testing', 'mantenimiento', 'pausado', 'cerrado')),
   owner_id uuid references auth.users (id),
   developer_ids uuid[] not null default '{}',
   next_step text default '',
   description text default '',
+  demo_url text default '',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   created_by uuid references auth.users (id)

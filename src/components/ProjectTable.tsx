@@ -46,7 +46,20 @@ export function ProjectTable({
                     <Link href={`/projects/${p.id}`} className="ptable-name" onClick={(e) => e.stopPropagation()}>
                       {p.name}
                     </Link>
-                    <div className="ptable-sub">{client ? client.name : "Sin cliente"}</div>
+                    <div className="ptable-sub">
+                      {client ? client.name : "Sin cliente"}
+                      {p.demo_url && (
+                        <a
+                          className="demo-link"
+                          href={p.demo_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Demo ↗
+                        </a>
+                      )}
+                    </div>
                   </td>
                   <td>
                     <span className={`badge badge-${p.status}`}>

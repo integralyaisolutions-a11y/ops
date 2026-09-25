@@ -52,11 +52,18 @@ export default function ProjectDetailPage() {
         <div>
           <h1>{project.name}</h1>
         </div>
-        {isStaff && (
-          <button className="btn" onClick={() => setShowEdit(true)}>
-            Editar proyecto
-          </button>
-        )}
+        <div className="row" style={{ gap: 8 }}>
+          {project.demo_url && (
+            <a className="btn" href={project.demo_url} target="_blank" rel="noopener noreferrer">
+              Abrir demo ↗
+            </a>
+          )}
+          {isStaff && (
+            <button className="btn" onClick={() => setShowEdit(true)}>
+              Editar proyecto
+            </button>
+          )}
+        </div>
       </div>
       <div className="content wide">
         <div className="tabs">

@@ -42,6 +42,12 @@ export async function inviteTeamMember(email: string, role: Role, fullName?: str
     userId = invited.user.id;
   }
 
+  // Si la persona no abre el email de invitación, su cuenta queda "sin
+  // confirmar" y Supabase rechaza enviarle enlaces de acceso. Como la ha
+  // invitado un admin, la damos por confirmada: así puede entrar pidiendo
+  // un enlace desde la pantalla de login en cualquier momento.
+  await admin.auth.admin.updateUserById(userId, { email_confirm: true });
+
   const { error: upsertErr } = await supabase
     .from("profiles")
     .upsert(

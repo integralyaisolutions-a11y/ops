@@ -12,7 +12,7 @@ function friendlyError(message: string) {
     return "Email o contraseña incorrectos. Si todavía no has creado una contraseña, entra con un enlace por email.";
   }
   if (m.includes("signups not allowed")) {
-    return "Esta cuenta no ha sido invitada todavía. Pide a un administrador que te añada desde Equipo.";
+    return "No podemos enviar un enlace a este email: o no ha sido invitado, o la invitación está pendiente. Pide a un administrador que te vuelva a añadir desde Equipo.";
   }
   if (m.includes("rate limit") || m.includes("only request this after")) {
     return "Se han pedido demasiados emails seguidos. Espera un poco (hasta una hora si has pedido varios) e inténtalo de nuevo.";

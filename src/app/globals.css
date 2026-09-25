@@ -112,7 +112,7 @@ button{font-family:inherit;}
 .proj-client{color:var(--ink-faint); font-size:12.3px; margin-top:2px;}
 .badge{display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:99px; font-size:11.3px; font-weight:600; white-space:nowrap;}
 .badge-descubrimiento,.badge-propuesta,.badge-presupuesto{background:var(--accent-soft); color:var(--accent-dim);}
-.badge-desarrollo{background:var(--success-soft); color:var(--success);}
+.badge-desarrollo,.badge-testing{background:var(--success-soft); color:var(--success);}
 .badge-mantenimiento{background:var(--surface); color:var(--success); border:1px solid var(--success-soft);}
 .badge-pausado{background:var(--warning-soft); color:var(--warning);}
 .badge-cerrado{background:var(--surface-2); color:var(--ink-faint); border:1px solid var(--border);}
@@ -146,6 +146,8 @@ button{font-family:inherit;}
 .ptable-owner{white-space:nowrap;}
 .ptable .col-num{text-align:center; width:1%;}
 .ptable .col-date{white-space:nowrap; width:1%;}
+.demo-link{display:inline-flex; align-items:center; margin-left:8px; padding:1px 8px; border-radius:99px; background:var(--accent-soft); color:var(--accent-dim); font-size:11.5px; font-weight:600; cursor:pointer; white-space:nowrap;}
+.demo-link:hover{background:var(--accent); color:var(--accent-ink);}
 .ptable-count{display:inline-block; min-width:22px; padding:2px 7px; border-radius:99px; background:var(--accent-soft); color:var(--accent-dim); font-weight:700; font-size:12px;}
 
 .tabs{display:flex; gap:4px; border-bottom:1px solid var(--border); margin-bottom:20px;}
@@ -154,7 +156,7 @@ button{font-family:inherit;}
 
 .field{margin-bottom:14px;}
 .field label{display:block; font-size:12.3px; font-weight:600; color:var(--ink-soft); margin-bottom:5px;}
-.field input[type=text],.field input[type=email],.field input[type=tel],.field input[type=password],.field textarea,.field select{
+.field input[type=text],.field input[type=email],.field input[type=tel],.field input[type=password],.field input[type=url],.field textarea,.field select{
   width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:8px; background:var(--surface);
   color:var(--ink); font-size:13.6px; font-family:inherit;
 }

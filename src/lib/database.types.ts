@@ -14,6 +14,7 @@ export type ProjectStatus =
   | "propuesta"
   | "presupuesto"
   | "desarrollo"
+  | "testing"
   | "mantenimiento"
   | "pausado"
   | "cerrado";
@@ -45,6 +46,7 @@ export interface Project {
   developer_ids: string[];
   next_step: string | null;
   description: string | null;
+  demo_url: string | null;
   created_at: string;
   updated_at: string;
   created_by: string | null;

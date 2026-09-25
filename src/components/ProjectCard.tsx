@@ -34,6 +34,23 @@ export function ProjectCard({ project }: { project: Project }) {
         <div className="next-step muted">Sin próximo paso definido</div>
       )}
       <div className="proj-foot">
+        {project.demo_url ? (
+          <span
+            role="link"
+            className="demo-link"
+            style={{ marginLeft: 0 }}
+            onClick={(e) => {
+              // La tarjeta entera ya es un enlace: abrimos la demo sin navegar al proyecto
+              e.preventDefault();
+              e.stopPropagation();
+              window.open(project.demo_url!, "_blank", "noopener,noreferrer");
+            }}
+          >
+            Demo ↗
+          </span>
+        ) : (
+          <span />
+        )}
         <span className="muted" style={{ fontSize: 11.8 }}>
           Encargado: {nameFor(project.owner_id)}
         </span>
